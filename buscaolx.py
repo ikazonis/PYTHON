@@ -1,65 +1,73 @@
 # -*- coding: utf-8 -*-
+import time
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
-import time
+from selenium_stealth import stealth
 
-def buscar_pedais():
-    chrome_options = Options()
-    # DESATIVADO o headless para voce ver o que acontece:
-    # chrome_options.add_argument("--headless") 
+def buscar_uma_vez():
+    # --- LISTA DE PRODUTOS ---
+    # Agora com a categoria opcional para cada um
+    meus_alvos = [
+        {"termo": "lente canon", "preco": 500, "cat": "acessorios-para-cameras-e-filmadoras"},
+        {"termo": "pedal boss", "preco": 250, "cat": "instrumentos-musicais"},
+        {"termo": "pedal ibanez tube", "preco": 400, "cat": "instrumentos-musicais"}
+    ]
+
+    options = Options()
+    options.add_experimental_option("detach", True)
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
     
-    chrome_options.add_argument("--start-maximized")
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-
     service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver = webdriver.Chrome(service=service, options=options)
 
-    # URL filtrada: Pedal Boss ate 250 reais
-    url = "https://www.olx.com.br/instrumentos-musicais?q=pedal%20boss&pe=250"
+    stealth(driver,
+            languages=["pt-BR", "pt"],
+            vendor="Google Inc.",
+            platform="Win32",
+            webgl_vendor="Intel Inc.",
+            renderer="Intel Iris OpenGL Engine",
+            fix_hairline=True)
 
-    try:
-        print("Abrindo o navegador...")
-        driver.get(url)
+    print(f"Iniciando busca para {len(meus_alvos)} produtos...")
 
-        print("Aguardando 10 segundos para carregamento manual/visual...")
-        time.sleep(10) # Tempo para voce ver se abriu o site ou o erro do Cloudflare
+    primeiro_item = True
 
-        # Tenta buscar os anuncios usando uma classe mais generica caso o data-testid falhe
-        print("Buscando anuncios...")
+    for item in meus_alvos:
+        produto = item["termo"]
+        preco_limite = item["preco"]
+        categoria = item["cat"]
         
-        # Lista de possíveis seletores (o OLX muda as vezes)
-        seletores = ['section[data-testid="ad-list-item"]', '.olx-ad-card', 'div[data-component="ads-list"]']
+        termo_url = produto.replace(" ", "%20")
         
-        anuncios = []
-        for seletor in seletores:
-            anuncios = driver.find_elements(By.CSS_SELECTOR, seletor)
-            if len(anuncios) > 0:
-                print(f"Sucesso com o seletor: {seletor}")
-                break
+        # sf=1: Ordena pelos mais recentes primeiro
+        # pe: Preco maximo
+        #url = f"https://www.olx.com.br/{categoria}?q={termo_url}&pe={preco_limite}&sf=1"
+        url = f"https://www.olx.com.br/{categoria}/estado-rj?pe={preco_limite}&q={termo_url}&sf=1"
 
-        if not anuncios:
-            print("Nenhum anuncio encontrado na tela. Verifique se apareceu um desafio 'Sou Humano'.")
+        if primeiro_item:
+            driver.get(url)
+            primeiro_item = False
         else:
-            print(f"Encontrados {len(anuncios)} itens.")
-            for anuncio in anuncios[:5]: # Mostra os 5 primeiros
-                try:
-                    titulo = anuncio.find_element(By.TAG_NAME, 'h2').text
-                    print(f"Item encontrado: {titulo}")
-                except:
-                    continue
+            driver.execute_script(f"window.open('{url}', '_blank');")
+            driver.switch_to.window(driver.window_handles[-1])
 
-    except Exception as e:
-        print(f"Erro detalhado: {e}")
+        print(f"Abrindo aba para: {produto} (ate R$ {preco_limite})...")
+        time.sleep(4) 
 
-    finally:
-        print("O navegador ficara aberto por 30 segundos para voce conferir...")
-        time.sleep(30)
-        driver.quit()
+        try:
+            # Tenta encontrar os anuncios para confirmar que a pagina carregou
+            anuncios = driver.find_elements(By.CSS_SELECTOR, 'section[data-testid="ad-list-item"]')
+            if anuncios:
+                print(f"   -> OK: Itens encontrados na pagina.")
+            else:
+                print(f"   -> Aviso: Nenhum item apareceu nos resultados.")
+        except:
+            pass
+
+    print("\nPronto! Analise as abas abertas.")
 
 if __name__ == "__main__":
-    buscar_pedais()
+    buscar_uma_vez()
