@@ -13,7 +13,7 @@ def buscar_uma_vez():
     meus_alvos = [
         {"termo": "lente canon", "preco": 500, "cat": "acessorios-para-cameras-e-filmadoras"},
         {"termo": "pedal boss", "preco": 250, "cat": "instrumentos-musicais"},
-        {"termo": "pedal ibanez tube", "preco": 400, "cat": "instrumentos-musicais"}
+        {"termo": "guitarra vintage v100", "preco": 2400, "cat": "instrumentos-musicais"}
     ]
 
     options = Options()
@@ -71,3 +71,4 @@ def buscar_uma_vez():
 
 if __name__ == "__main__":
     buscar_uma_vez()
+
